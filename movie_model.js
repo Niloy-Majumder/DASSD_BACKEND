@@ -7,6 +7,7 @@ const movieSchema = new mongoose.Schema({
   genre: { type: String },
   rating: { type: Number },
   description: { type: String },
+  isDeleted: {type: Boolean},
 });
 
 const Movies = mongoose.model("Movie", movieSchema);

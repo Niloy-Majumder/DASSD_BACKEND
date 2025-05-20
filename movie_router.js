@@ -32,7 +32,7 @@ movieRouter.get("/search", authMiddleware, checkAccess("user", "admin"), async (
     if (director) query.director = director;
     if (releaseYear) query.releaseYear = releaseYear;
     if (genre) query.genre = genre;
-
+    query.isDeleted = query.isDeleted ? query.isDeleted : false;
     const movies = await Movies.find(query);
     res.send(movies);
   } catch (error) {
@@ -58,18 +58,23 @@ movieRouter.get("/:id", authMiddleware, checkAccess("user", "admin"), async (req
 movieRouter.post("/", authMiddleware, checkAccess("admin"), async (req, res) => {
   try {
     const data = req.body;
+    if (await Movies.exists(data) == null) {
+      const newMovie = new Movies({
+        title: data.title,
+        director: data.director,
+        releaseYear: data.releaseYear,
+        genre: data.genre,
+        rating: data.rating,
+        description: data.description,
+        isDeleted: false
+      });
 
-    const newMovie = new Movies({
-      title: data.title,
-      director: data.director,
-      releaseYear: data.releaseYear,
-      genre: data.genre,
-      rating: data.rating,
-      description: data.description,
-    });
+      await newMovie.save();
+      res.status(201).send(newMovie);
+    }
+      res.status(201).send(`${data.title} already exists.`);
 
-    await newMovie.save();
-    res.status(201).send(newMovie);
+
   } catch (error) {
     res.status(500).send("An error occurred");
   }
@@ -98,7 +103,7 @@ movieRouter.post("/image/:id", authMiddleware, checkAccess("admin"), upload.sing
         filePath: `/images/${movie.title}`,
       });
     });
-  } catch (error) {}
+  } catch (error) { }
 });
 
 movieRouter.get("/image/:id", authMiddleware, checkAccess("user", "admin"), async (req, res) => {
@@ -146,7 +151,18 @@ movieRouter.put("/:id", authMiddleware, checkAccess("user", "admin"), async (req
 
 movieRouter.delete("/:id", authMiddleware, checkAccess("admin"), async (req, res) => {
   try {
-    await Movies.deleteOne({ _id: req.params.id });
+    // await Movies.deleteOne({ _id: req.params.id });
+    const movie = await Movies.findById(req.params.id);
+    if (!movie) {
+      return res.status(404).send("Movie not found");
+    }
+    const updatedMovie = await Movies.updateOne(
+      { _id: req.params.id },
+      {
+        isDeleted: true,
+      }
+    );
+
     res.send(`Deleted Movie with ID: ${req.params.id}`);
   } catch (error) {
     console.log(error);
